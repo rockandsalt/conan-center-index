@@ -1,6 +1,7 @@
 from conans import ConanFile, CMake, tools
 from conan.tools.layout import cmake_layout
 import os
+from pathlib import Path
 import json
 
 
@@ -41,8 +42,7 @@ class VtkConan(ConanFile):
                        "vtk_group_enable_views": "default",
                        "vtk_group_enable_web": False,
                        "fPIC": True}
-
-    no_copy_source = True
+    
     short_paths = True
     generators = ["cmake_find_package"]
     _cmake = None
@@ -58,6 +58,11 @@ class VtkConan(ConanFile):
     def source(self):
         tools.get(**self.conan_data["sources"][self.version],
                   strip_root=True, destination=self._source_subfolder)
+    
+    def _patch_source(self):
+        find_cmake_file = Path(os.path.join(self._source_subfolder, 'CMake')).glob('**/Find*.cmake')
+        for p in find_cmake_file:
+            p.unlink(missing_ok=True)
 
     def _convert_smp_option(self, v):
         if v == "sequential":
@@ -115,6 +120,7 @@ class VtkConan(ConanFile):
         return self._cmake
 
     def build(self):
+        self._patch_source()
         cmake = self._configure_cmake()
         cmake.build()
 
