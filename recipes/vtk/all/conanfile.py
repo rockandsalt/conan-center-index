@@ -41,7 +41,9 @@ class VtkConan(ConanFile):
                        "vtk_group_enable_standalone": True,
                        "vtk_group_enable_views": "default",
                        "vtk_group_enable_web": False,
-                       "fPIC": True}
+                       "fPIC": True,
+                       "qt:qtdeclarative": True,
+                       "qt:qtshadertools": True}
     
     short_paths = True
     generators = ["cmake_find_package"]
@@ -60,9 +62,7 @@ class VtkConan(ConanFile):
                   strip_root=True, destination=self._source_subfolder)
     
     def _patch_source(self):
-        find_cmake_file = Path(os.path.join(self._source_subfolder, 'CMake')).glob('**/Find*.cmake')
-        for p in find_cmake_file:
-            p.unlink(missing_ok=True)
+        tools.remove_files_by_mask(os.path.join(self._source_subfolder, 'CMake'), 'Find*.cmake')
 
     def _convert_smp_option(self, v):
         if v == "sequential":
