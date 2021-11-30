@@ -20,7 +20,6 @@ class VtkConan(ConanFile):
                "vtk_use_cuda": [True, False],
                "vtk_use_mpi": [True, False],
                "vtk_group_enable_qt": [True, False, "default"],
-               "qt_version": [5, 6],
                "vtk_group_enable_rendering": [True, False, "default"],
                "vtk_group_enable_mpi": [True, False, "default"],
                "vtk_group_enable_standalone": [True, False, "default"],
@@ -36,7 +35,6 @@ class VtkConan(ConanFile):
                        "vtk_use_mpi": False,
                        "vtk_group_enable_imaging": True,
                        "vtk_group_enable_qt": True,
-                       "qt_version": 6,
                        "vtk_group_enable_rendering": True,
                        "vtk_group_enable_mpi": False,
                        "vtk_group_enable_standalone": True,
@@ -46,8 +44,7 @@ class VtkConan(ConanFile):
 
     no_copy_source = True
     short_paths = True
-    generators = ["cmake_find_package_multi"]
-    exports_sources = ["CMakeLists.txt"]
+    generators = ["cmake_find_package"]
     _cmake = None
 
     @property
@@ -113,9 +110,6 @@ class VtkConan(ConanFile):
             else:
                 self._cmake.definitions["VTK_WHEEL_BUILD"] = "OFF"
 
-            if self.options.vtk_group_enable_qt in [True, "default"]:
-                self._cmake.definitions["VTK_QT_VERSION"] = str(self.options.qt_version)
-
             self._cmake.configure(source_folder=self._source_subfolder)
 
         return self._cmake
@@ -130,10 +124,7 @@ class VtkConan(ConanFile):
             self.requires("opengl/system")
 
         if self.options.vtk_group_enable_qt in [True, "default"]:
-            if self.options.qt_version == 6:
-                self.requires("qt/6.1.1")
-            else:
-                self.requires("qt/5.15.2")
+            self.requires("qt/6.1.1")
 
         if self.options.vtk_smp_implementation == "tbb":
             self.requires("TBB/4.4.4")
