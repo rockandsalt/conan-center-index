@@ -131,7 +131,7 @@ class VtkConan(ConanFile):
             self.requires("opengl/system")
 
         if self.options.vtk_group_enable_qt in [True, "default"]:
-            self.requires("qt/6.1.1")
+            self.requires("qt/6.2.1")
 
         if self.options.vtk_smp_implementation == "tbb":
             self.requires("TBB/4.4.4")
