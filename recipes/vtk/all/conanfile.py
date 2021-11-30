@@ -44,7 +44,8 @@ class VtkConan(ConanFile):
                        "fPIC": True,
                        "qt:qtdeclarative": True,
                        "qt:qtshadertools": True,
-                       "qt:qtsvg": True}
+                       "qt:qtsvg": True,
+                       "qt:shared": True}
     
     short_paths = True
     generators = ["cmake_find_package"]
