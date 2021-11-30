@@ -2,6 +2,7 @@ from conans import ConanFile, CMake, tools, AutoToolsBuildEnvironment
 from conans.errors import ConanInvalidConfiguration
 import glob
 import os
+import textwrap
 
 required_conan_version = ">=1.33.0"
 
@@ -106,8 +107,17 @@ class CapnprotoConan(ConanFile):
         ]
         if tools.Version(self.version) >= "0.8.0":
             args.append("--with-zlib" if self.options.with_zlib else "--without-zlib")
+
         self._autotools = AutoToolsBuildEnvironment(self)
-        self._autotools.configure(args=args, configure_dir=os.path.join(self._source_subfolder, "c++"))
+
+        # Fix rpath on macOS
+        configure_dir = os.path.join(self._source_subfolder, "c++")
+        configure_path = os.path.join(configure_dir, "configure")
+        if self.settings.os == "Macos":
+            tools.replace_in_file(configure_path, r"-install_name \$rpath/", "-install_name @rpath/")
+            self._autotools.link_flags.append("-Wl,-rpath,@loader_path/../lib")
+
+        self._autotools.configure(args=args, configure_dir=configure_dir)
         return self._autotools
 
     def build(self):
@@ -141,12 +151,23 @@ class CapnprotoConan(ConanFile):
                 os.remove(cmake_file)
         # inject mandatory variables so that CAPNP_GENERATE_CPP function can
         # work in a robust way (build from source or from pre build package)
+        find_execs = textwrap.dedent("""\
+            if(CMAKE_CROSSCOMPILING)
+                find_program(CAPNP_EXECUTABLE capnp PATHS ENV PATH NO_DEFAULT_PATH)
+                find_program(CAPNPC_CXX_EXECUTABLE capnpc-c++ PATHS ENV PATH NO_DEFAULT_PATH)
+            endif()
+            if(NOT CAPNP_EXECUTABLE)
+                set(CAPNP_EXECUTABLE "${CMAKE_CURRENT_LIST_DIR}/../../../bin/capnp${CMAKE_EXECUTABLE_SUFFIX}")
+            endif()
+            if(NOT CAPNPC_CXX_EXECUTABLE)
+                set(CAPNPC_CXX_EXECUTABLE "${CMAKE_CURRENT_LIST_DIR}/../../../bin/capnpc-c++${CMAKE_EXECUTABLE_SUFFIX}")
+            endif()
+            set(CAPNP_INCLUDE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../../../include")
+            function(CAPNP_GENERATE_CPP SOURCES HEADERS)
+        """)
         tools.replace_in_file(os.path.join(self.package_folder, self._cmake_folder, "CapnProtoMacros.cmake"),
                               "function(CAPNP_GENERATE_CPP SOURCES HEADERS)",
-                              """set(CAPNP_EXECUTABLE "${CMAKE_CURRENT_LIST_DIR}/../../../bin/capnp${CMAKE_EXECUTABLE_SUFFIX}")
-set(CAPNPC_CXX_EXECUTABLE "${CMAKE_CURRENT_LIST_DIR}/../../../bin/capnpc-c++${CMAKE_EXECUTABLE_SUFFIX}")
-set(CAPNP_INCLUDE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../../../include")
-function(CAPNP_GENERATE_CPP SOURCES HEADERS)""")
+                              find_execs)
 
     def package_info(self):
         self.cpp_info.names["cmake_find_package"] = "CapnProto"
