@@ -50,13 +50,17 @@ class VtkConan(ConanFile):
     exports_sources = ["CMakeLists.txt"]
     _cmake = None
 
+    @property
+    def _source_subfolder(self):
+        return "source_subfolder"
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version],
-                  strip_root=True, destination=self.folders.source)
+                  strip_root=True, destination=self._source_subfolder)
 
     def _convert_smp_option(self, v):
         if v == "sequential":
@@ -77,10 +81,6 @@ class VtkConan(ConanFile):
             return "WANT"
         else:
             return "DONT_WANT"
-
-    def layout(self):
-        cmake_layout(self)
-        self.folders.source = "tmp"
 
     def _configure_cmake(self):
         if not self._cmake:
@@ -114,9 +114,9 @@ class VtkConan(ConanFile):
                 self._cmake.definitions["VTK_WHEEL_BUILD"] = "OFF"
 
             if self.options.vtk_group_enable_qt in [True, "default"]:
-                self._cmake.definitions["VTK_QT_VERSION"] = self.options.qt_version
+                self._cmake.definitions["VTK_QT_VERSION"] = str(self.options.qt_version)
 
-            self._cmake.configure()
+            self._cmake.configure(source_folder=self._source_subfolder)
 
         return self._cmake
 
@@ -136,20 +136,20 @@ class VtkConan(ConanFile):
                 self.requires("qt/5.15.2")
 
         if self.options.vtk_smp_implementation == "tbb":
-            self.requires("TBB/4.4.4@conan/stable")
+            self.requires("TBB/4.4.4")
 
         if self.options.vtk_use_mpi:
             self.requires("openmpi/4.1.0")
 
     def package(self):
-        self.copy("Copyright.txt", dst="licenses", src=self.folders.source)
+        self.copy("Copyright.txt", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
         cmake.install()
 
         tools.rmdir(os.path.join(self.package_folder, "lib", "cmake"))
         tools.rmdir(os.path.join(self.package_folder, "share"))
         tools.rmdir(os.path.join(self.package_folder, "lib", "vtk"))
-        self.copy("modules.json", dst="bin", src=self.folders.build)
+        self.copy("modules.json", dst="bin", src=self.build_folder)
 
     def filter_dep(self, name, dependencies, enabled_pkg):
         ls_dep = []

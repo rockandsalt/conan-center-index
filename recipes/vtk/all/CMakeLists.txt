@@ -5,4 +5,4 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-add_subdirectory(tmp)
+add_subdirectory(source_subfolder)
