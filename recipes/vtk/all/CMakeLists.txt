@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.4)
 project(cmake_wrapper)
 
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+if(WIN32 AND BUILD_SHARED_LIBS)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
 
-include("${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
-conan_basic_setup()
-
-add_subdirectory("source_subfolder")
+add_subdirectory(tmp)
