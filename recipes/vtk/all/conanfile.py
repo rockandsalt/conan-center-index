@@ -42,6 +42,8 @@ class VtkConan(ConanFile):
                        "vtk_group_enable_views": "default",
                        "vtk_group_enable_web": False,
                        "fPIC": True,
+                       "qt:gui" : True,
+                       "qt:widgets" : True,
                        "qt:qtdeclarative": True,
                        "qt:qtshadertools": True,
                        "qt:qtsvg": True,
@@ -49,6 +51,7 @@ class VtkConan(ConanFile):
     
     short_paths = True
     generators = ["cmake_find_package"]
+    exports_sources = "patches/**"
     _cmake = None
 
     @property
@@ -65,6 +68,8 @@ class VtkConan(ConanFile):
     
     def _patch_source(self):
         tools.remove_files_by_mask(os.path.join(self._source_subfolder, 'CMake'), 'Find*.cmake')
+        for patch in self.conan_data.get("patches", {}).get(self.version, []):
+            tools.patch(**patch)
 
     def _convert_smp_option(self, v):
         if v == "sequential":
