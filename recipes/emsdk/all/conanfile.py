@@ -1,5 +1,4 @@
 from conans import ConanFile, tools
-from conans.errors import ConanInvalidConfiguration
 import os
 import json
 
@@ -90,9 +89,10 @@ class EmSDKConan(ConanFile):
                               "set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)")
         if not tools.cross_building(self):
             with tools.environment_append(self._emscripten_env):
-                tools.save("deleteme.cpp", "int main(){}")
-                self.run("em++ deleteme.cpp", run_environment=True) # force cache population
-                tools.remove_files_by_mask(".", "deleteme.*")
+                self.run("embuilder build MINIMAL", run_environment=True) # force cache population
+                # the line below forces emscripten to accept the cache as-is, even after re-location
+                # https://github.com/emscripten-core/emscripten/issues/15053#issuecomment-920950710
+                os.remove(os.path.join(self._emscripten_env["EM_CACHE"], "sanity.txt"))
 
 
 

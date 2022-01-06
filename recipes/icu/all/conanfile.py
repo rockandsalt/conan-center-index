@@ -4,7 +4,7 @@ import glob
 import os
 import shutil
 
-required_conan_version = ">=1.33.0"
+required_conan_version = ">=1.35.0"
 
 
 class ICUBase(ConanFile):
@@ -14,7 +14,7 @@ class ICUBase(ConanFile):
     description = "ICU is a mature, widely used set of C/C++ and Java libraries " \
                   "providing Unicode and Globalization support for software applications."
     url = "https://github.com/conan-io/conan-center-index"
-    topics = ("conan", "icu", "icu4c", "i see you", "unicode")
+    topics = ("icu", "icu4c", "i see you", "unicode")
 
     settings = "os", "arch", "compiler", "build_type"
     options = {
@@ -24,6 +24,8 @@ class ICUBase(ConanFile):
         "with_unit_tests": [True, False],
         "silent": [True, False],
         "with_dyload": [True, False],
+        "dat_package_file": "ANY",
+        "with_icuio": [True, False],
     }
     default_options = {
         "shared": False,
@@ -32,9 +34,10 @@ class ICUBase(ConanFile):
         "with_unit_tests": False,
         "silent": True,
         "with_dyload": True,
+        "dat_package_file": None,
+        "with_icuio": True,
     }
 
-    exports_sources = "patches/*.patch"
     _env_build = None
 
     @property
@@ -56,6 +59,10 @@ class ICUBase(ConanFile):
     @property
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS"]
+
+    def export_sources(self):
+        for patch in self.conan_data.get("patches", {}).get(self.version, []):
+            self.copy(patch["patch_file"])
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -96,6 +103,9 @@ class ICUBase(ConanFile):
     def package_id(self):
         del self.info.options.with_unit_tests  # ICU unit testing shouldn't affect the package's ID
         del self.info.options.silent  # Verbosity doesn't affect package's ID
+        if self.info.options.dat_package_file:
+            dat_package_file_sha256 = tools.sha256sum(str(self.info.options.dat_package_file))
+            self.info.options.dat_package_file = dat_package_file_sha256
 
     @property
     def _settings_build(self):
@@ -114,6 +124,12 @@ class ICUBase(ConanFile):
     def build(self):
         for patch in self.conan_data.get("patches", {}).get(self.version, []):
             tools.patch(**patch)
+        
+        if self.options.dat_package_file:
+            dat_package_file = glob.glob(os.path.join(self.source_folder, self._source_subfolder, "source", "data", "in", "*.dat"))
+            if dat_package_file:
+                shutil.copy(str(self.options.dat_package_file), dat_package_file[0])
+        
         if self._is_msvc:
             run_configure_icu_file = os.path.join(self._source_subfolder, "source", "runConfigureICU")
 
@@ -184,6 +200,9 @@ class ICUBase(ConanFile):
 
         if not self._enable_icu_tools:
             args.append("--disable-tools")
+        
+        if not self.options.with_icuio:
+            args.append("--disable-icuio")
 
         env_build = self._configure_autotools()
         if tools.cross_building(self, skip_x64_x86=True):
@@ -329,15 +348,18 @@ class ICUBase(ConanFile):
         self.cpp_info.components["icu-i18n-alias"].requires = ["icu-i18n"]
 
         # icuio
-        self.cpp_info.components["icu-io"].names["cmake_find_package"] = "io"
-        self.cpp_info.components["icu-io"].names["cmake_find_package_multi"] = "io"
-        self.cpp_info.components["icu-io"].names["pkg_config"] = "icu-io"
-        self.cpp_info.components["icu-io"].libs = [self._lib_name("icuio")]
-        self.cpp_info.components["icu-io"].requires = ["icu-i18n", "icu-uc"]
+        if self.options.with_icuio:
+            self.cpp_info.components["icu-io"].names["cmake_find_package"] = "io"
+            self.cpp_info.components["icu-io"].names["cmake_find_package_multi"] = "io"
+            self.cpp_info.components["icu-io"].names["pkg_config"] = "icu-io"
+            self.cpp_info.components["icu-io"].libs = [self._lib_name("icuio")]
+            self.cpp_info.components["icu-io"].requires = ["icu-i18n", "icu-uc"]
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
             data_path = os.path.join(self.package_folder, "res", self._data_filename).replace("\\", "/")
-            self.output.info("Appending ICU_DATA environment variable: {}".format(data_path))
+            self.output.info("Prepending to ICU_DATA runtime environment variable: {}".format(data_path))
+            self.runenv_info.prepend_path("ICU_DATA", data_path)
+            # TODO: to remove after conan v2, it allows to not break consumers still relying on virtualenv generator
             self.env_info.ICU_DATA.append(data_path)
 
         if self._enable_icu_tools:
