@@ -54,6 +54,9 @@ class VtkConan(ConanFile):
     exports_sources = "patches/**"
     _cmake = None
 
+    def validate(self):
+        tools.check_min_cppstd(self, "17")
+
     @property
     def _source_subfolder(self):
         return "source_subfolder"
