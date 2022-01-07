@@ -13,7 +13,7 @@ class VtkConan(ConanFile):
     description = "VTK is an open-source software system for" \
         "image processing, 3D graphics, volume rendering and visualization."
     topics = ("conan", "vtk", "geometry", "algorithms")
-    settings = "os", "compiler", "build_type", "arch"
+    settings = "os", "compiler", "build_type", "arch", "cppstd"
     options = {"shared": [True, False],
                "vtk_smp_implementation": ["sequential", "openmp", "tbb", "stl"],
                "vtk_wrap_python": [True, False],
